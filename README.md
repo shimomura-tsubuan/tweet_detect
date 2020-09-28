@@ -30,11 +30,13 @@ SaaS検知用としてますが、エゴサ用にも使えるかも。
 ## 初期構築前の事前準備
 
 1. Twitter APIの準備
-   - 下記手順などを参考に、Twitterの「API Key」と「API key secret」を取得。権限は「Read Only」だけ与えておけば十分です。
+   - 下記手順などを参考に、Twitterの「API Key」と「API key secret」を取得。
      - https://help.twitter.com/ja/rules-and-policies/twitter-api
      - https://qiita.com/nobu09/items/c940fc6e0d67ef1cbc85
      - https://qiita.com/kngsym2018/items/2524d21455aac111cdee
      - https://www.itti.jp/web-direction/how-to-apply-for-twitter-api/
+     - 権限は「Read Only」だけ与えておけば十分です。
+        - ![tweet_api.png](./img/tweet_api.png)
 2. Slackチャンネル 及び そのチャンネルに対してのIncoming Webhook URLの準備
    - 下記手順などを参考にIncoming WebhookのURLを取得する
      - https://slack.com/intl/ja-jp/help/articles/115005265063-Slack-%E3%81%A7%E3%81%AE-Incoming-Webhook-%E3%81%AE%E5%88%A9%E7%94%A8
@@ -56,7 +58,7 @@ SaaS検知用としてますが、エゴサ用にも使えるかも。
    - 4行目： 変数「twitter_api_key」にTwitterのAPI Keyを記載。
    - 5行目： 変数「twitter_api_key_secret」にTwitterのAPI Key secretを記載。
 5. 15分おきにGASが実行されるようにトリガーを設定する。
-   - 「時計アイコン?」を選択 - 「トリガーを追加」を選択 - 「15分おき」に実行されるように設定。
+   - 「時計アイコン?」を選択 - 「トリガーを追加」を選択 - 「main」ファンクションが「15分おき」に実行されるように設定。
       - ![create_trigger_1.png](./img/create_trigger_1.png)
       - ![create_trigger_2.png](./img/create_trigger_2.png)
       - ![create_trigger_3.png](./img/create_trigger_3.png)
