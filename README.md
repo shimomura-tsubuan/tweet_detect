@@ -1,8 +1,9 @@
 # このリポジトリは？
 
 Twitterのつぶやきを監視して、SaaSの障害を検知する。  
+SaaS検知用としてますが、エゴサ用にも使えるかも。  
 
-SaaS検知用としてますが、エゴサ用にも使えるかも。
+このリポジトリについて記載している記事は [こちら](https://moneyforward.com/engineers_blog/2020/09/30/saas-status-check/)
 
 ## 必要なもの
 
