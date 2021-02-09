@@ -4,9 +4,36 @@ var slackWebhookUrl = 'https://hooks.slack.com/services/******/***********/*****
 var twitter_api_key = '****';
 var twitter_api_key_secret = '****';
 
+function call_main(){
+  try {
+    main()
+  }
+  catch(e){
+    errMsg = e.toString()
+    var err_count = PropertiesService.getScriptProperties().getProperty("err_count");
+    err_count++
+
+    //何回もSlack通知することを避けるためしきい値に達したときだけSlack通知する
+    if ( err_count == notice_threshold ){
+      postSlack("[ERROR]" + errMsg)
+      PropertiesService.getScriptProperties().setProperty("status", "error"); //エラー通知した旨のステータスを記録しておく
+      return
+    }
+    return
+  }
+  
+  //ステータスを更新
+  var status = PropertiesService.getScriptProperties().getProperty("status");
+  if ( status == "error" ){
+    postSlack("エラーから復帰しました")
+  }
+  PropertiesService.getScriptProperties().setProperty("status", "ok"); //正常終了したことを記録しておく。
+  PropertiesService.getScriptProperties().setProperty("err_count", 0); //エラーカウントをリセットする
+}
+
 function main(){
   var check_range = new Date();
-  var check_range = check_range.setMinutes(check_range.getMinutes() - 15); //Tweet検索対象の分数を指定
+  var check_range = check_range.setMinutes(check_range.getMinutes() - 30); //Tweet検索対象の分数を指定
   
   //スプレッドシートの情報を抽出
   var ｓpreadSheetObject = SpreadsheetApp.getActiveSpreadsheet(); //現在アクティブなスプレッドシートを定義
@@ -22,14 +49,13 @@ function main(){
   
   //「無視文言」シートから除外対象のTweet文言を抽出する
   var ignore_regexp = return_ignore_regexp(ignore_list_sheetArray);
-
   //スプレッドシートからTwitterの検索ログを抽出
-  for(var i=1; i<list_sheetArray.length; i++){ //1行目はヘッダーなので無視する。
-    var result_array = []; //配列を初期化
-    var search_key_1 = list_sheetArray[i][0]; //「SaaSリスト」シートのA列から検索対処のSaaS名を抽出
-    var threshold = list_sheetArray[i][1]; //「SaaSリスト」シートのB列からしきい値を抽出
+  for(var i=1; i<list_sheetArray.length; i++){ //1行目は無視する。
+    var result_array = [];
+    var search_key_1 = list_sheetArray[i][0]; //「SaaSリスト」シートのA列から抽出
+    var threshold = list_sheetArray[i][1]; //「SaaSリスト」シートのB列から抽出
     
-    //「SaaSリスト」シートから抽出した内容と「検知文言」シートの内容をmergeしてTwitterから検索
+    //「SaaSリスト」シートから抽出した内容と「down_keyword」シートの内容をmergeしてTwitterから検索
     for(var j=0; j<downlist_sheetArray.length; j++){
       var search_key_2 = downlist_sheetArray[j][0];
       var result_array = searchTweetsApps(result_array, search_key_1, search_key_2, check_range, ignore_regexp);
@@ -42,7 +68,7 @@ function main(){
     var bool_2 = ( search_key_2 != "" ) && ( search_key_2 != undefined );  //スプレッドシートのセルが空欄だった時用(空欄ならfalseにする)
     
     //検索日時の範囲に該当したログが指定件数以上あればSlack通知(1件だけのtweetとかだと誤検知の可能性もあるので)
-    var postNum = 10; //Slack通知する上限メッセージ数
+    var postNum = 5; //Slack通知する上限メッセージ数
     if ( result_array.length > (threshold-1) && bool_1 && bool_2){
       var summary_text = "「" + search_key_1 + "」で" + result_array.length + "件ヒットしました。(直近の" + String(postNum) + "件のみSlack通知します)";
       postSlack(summary_text);
@@ -64,10 +90,9 @@ function searchTweetsApps(result_array, app_name, detect_word, check_range, igno
   
   if ( app_name == "" || app_name == undefined ) { return };
   if ( detect_word == "" || detect_word == undefined ) { return };
-  
   // ①Twitter Bearerトークンの取得（検索APIの呼び出しに必要）
   // POST oauth2/token  https://developer.twitter.com/en/docs/basics/authentication/api-reference/token
-  var blob = Utilities.newBlob(twitter_api_key + ':' + twitter_api_key_secret);
+  var blob = Utilities.newBlob(consumer_key + ':' + consumer_secret);
   var credential = Utilities.base64Encode(blob.getBytes());
 
   var formData = {
@@ -85,10 +110,11 @@ function searchTweetsApps(result_array, app_name, detect_word, check_range, igno
     'payload': formData,
   };
 
-  var oauth2_response = UrlFetchApp.fetch('https://api.twitter.com/oauth2/token', options);
+  var oauth2_response = UrlFetchApp.fetch('https://api.twitter.com/oauth2/token', options);  
   var bearer_token = JSON.parse(oauth2_response).access_token; 
 
   // ②Twitter 検索APIの呼び出し 
+  // GET https://api.twitter.com/1.1/search/tweets.json
   var bearer_auth_header = {
     'Authorization': 'Bearer ' + bearer_token
   };
@@ -129,7 +155,6 @@ function searchTweetsApps(result_array, app_name, detect_word, check_range, igno
   return result_array;
 }
 
-//Slack投稿するだけの関数
 function postSlack(text){
   var data = {
     "text": text
@@ -142,7 +167,6 @@ function postSlack(text){
   UrlFetchApp.fetch(slackWebhookUrl, options);
 }
 
-//正規表現オブジェクトに変換するだけの関数
 function return_ignore_regexp(ignore_list_sheetArray){
   //「無視文言」リストに記載のある内容に.*を前後につける
   var temp_array = []
@@ -159,7 +183,6 @@ function return_ignore_regexp(ignore_list_sheetArray){
   if ( temp_array_join == "" ){
     var temp_array_join = "_N_U_L_L_";
   }
-  
   //正規表現オブジェクトにして返す
   var regexp = new RegExp(temp_array_join);
   return regexp
